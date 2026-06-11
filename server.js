@@ -13,6 +13,37 @@ const app = express();
 const PORT = process.env.PORT || 4242;
 
 app.use(cors());
+
+// Stripe webhook needs raw body — must be before express.json()
+app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+    let event;
+    try {
+        event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    } catch (err) {
+        console.error('Webhook signature failed:', err.message);
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    if (event.type === 'payment_intent.succeeded') {
+        const intent = event.data.object;
+        const email = intent.metadata.customer_email;
+        const toolId = intent.metadata.tool_id;
+
+        if (email && toolId) {
+            try {
+                await sendDeliveryEmail(email, toolId, intent.id);
+            } catch (err) {
+                console.error('Email delivery failed:', err.message);
+            }
+        }
+    }
+
+    res.json({ received: true });
+});
+
 app.use(express.json());
 
 // ─────────────────────────────────────────
@@ -227,36 +258,6 @@ app.post('/create-payment-intent', async (req, res) => {
         console.error('Payment intent creation failed:', error);
         res.status(500).json({ error: error.message });
     }
-});
-
-// Stripe Webhook — triggers email delivery after confirmed payment
-app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-    const sig = req.headers['stripe-signature'];
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-    let event;
-    try {
-        event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-    } catch (err) {
-        console.error('Webhook signature failed:', err.message);
-        return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-
-    if (event.type === 'payment_intent.succeeded') {
-        const intent = event.data.object;
-        const email = intent.metadata.customer_email;
-        const toolId = intent.metadata.tool_id;
-
-        if (email && toolId) {
-            try {
-                await sendDeliveryEmail(email, toolId, intent.id);
-            } catch (err) {
-                console.error('Email delivery failed:', err.message);
-            }
-        }
-    }
-
-    res.json({ received: true });
 });
 
 // Health check
