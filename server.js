@@ -19,9 +19,15 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
     const sig = req.headers['stripe-signature'];
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
+    console.log('Webhook received');
+    console.log('Signature header:', sig ? 'present' : 'MISSING');
+    console.log('Webhook secret configured:', webhookSecret ? 'yes' : 'NO - MISSING');
+    console.log('Body type:', typeof req.body, Buffer.isBuffer(req.body) ? '(Buffer)' : '(not Buffer)');
+
     let event;
     try {
         event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+        console.log('Event verified:', event.type);
     } catch (err) {
         console.error('Webhook signature failed:', err.message);
         return res.status(400).send(`Webhook Error: ${err.message}`);
@@ -32,12 +38,17 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         const email = intent.metadata.customer_email;
         const toolId = intent.metadata.tool_id;
 
+        console.log('Payment succeeded - email:', email, 'toolId:', toolId);
+
         if (email && toolId) {
             try {
                 await sendDeliveryEmail(email, toolId, intent.id);
+                console.log('Email sent successfully');
             } catch (err) {
                 console.error('Email delivery failed:', err.message);
             }
+        } else {
+            console.log('Missing email or toolId - skipping delivery');
         }
     }
 
