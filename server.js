@@ -33,10 +33,12 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
-    if (event.type === 'payment_intent.succeeded') {
-        const intent = event.data.object;
-        const email = intent.metadata.customer_email;
-        const toolId = intent.metadata.tool_id;
+if (event.type === 'payment_intent.succeeded') {
+    const intent = event.data.object;
+    const email = intent.metadata.customer_email 
+        || intent.receipt_email
+        || intent.charges?.data?.[0]?.billing_details?.email;
+    const toolId = intent.metadata.tool_id;
 
         console.log('Payment succeeded - email:', email, 'toolId:', toolId);
 
