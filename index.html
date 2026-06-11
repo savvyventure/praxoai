@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PraxoAI — Productivity Tools for the Modern Mind</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://js.stripe.com/v3/"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Space Grotesk', 'sans-serif'],
+                    },
+                    colors: {
+                        dark: {
+                            900: '#0a0a0f',
+                            800: '#12121a',
+                            700: '#1a1a25',
+                            600: '#232330',
+                            500: '#2a2a3c',
+                        },
+                        accent: {
+                            400: '#a78bfa',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            glow: '#c4b5fd',
+                        },
+                        neon: {
+                            cyan: '#22d3ee',
+                            pink: '#f472b6',
+                            lime: '#a3e635',
+                            amber: '#fbbf24',
+                        }
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'shimmer': 'shimmer 2s linear infinite',
+                        'gradient': 'gradient 8s ease infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        },
+                        shimmer: {
+                            '0%': { backgroundPosition: '-1000px 0' },
+                            '100%': { backgroundPosition: '1000px 0' },
+                        },
+                        gradient: {
+                            '0%, 100%': { backgroundPosition: '0% 50%' },
+                            '50%': { backgroundPosition: '100% 50%' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0a0a0f;
+            color: #e2e8f0;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0a0a0f; }
+        ::-webkit-scrollbar-thumb { background: #2a2a3c; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3a3a5c; }
+
+        .glass {
+            background: rgba(18, 18, 26, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .glass-strong {
+            background: rgba(18, 18, 26, 0.85);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #a78bfa 0%, #22d3ee 50%, #f472b6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            background-size: 200% 200%;
+            animation: gradient 8s ease infinite;
+        }
+
+        .glow-purple {
+            box-shadow: 0 0 40px rgba(139, 92, 246, 0.3), 0 0 80px rgba(139, 92, 246, 0.1);
+        }
+
+        .glow-cyan {
+            box-shadow: 0 0 40px rgba(34, 211, 238, 0.3), 0 0 80px rgba(34, 211, 238, 0.1);
+        }
+
+        .mesh-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(34, 211, 238, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 50% 10%, rgba(244, 114, 182, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .noise {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            pointer-events: none;
+        }
+
+        .tool-card {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .tool-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(139, 92, 246, 0.2);
+        }
+        .tool-card.selected {
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 2px #8b5cf6, 0 20px 40px rgba(139, 92, 246, 0.3);
+        }
+
+        .btn-shine {
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-shine::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                to right,
+                rgba(255,255,255,0) 0%,
+                rgba(255,255,255,0.3) 50%,
+                rgba(255,255,255,0) 100%
+            );
+            transform: rotate(30deg);
+            transition: all 0.6s;
+            opacity: 0;
+        }
+        .btn-shine:hover::after {
+            left: 100%;
+            opacity: 1;
+            transition: all 0.6s;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .loading {
+            border: 2px solid rgba(139, 92, 246, 0.2);
+            border-top-color: #8b5cf6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 0.8s linear infinite;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.5);
+        }
+
+        #particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .modal-enter {
+            animation: modalEnter 0.3s ease-out forwards;
+        }
+        @keyframes modalEnter {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .payment-method-btn.active {
+            border-color: #8b5cf6;
+            background-color: rgba(139, 92, 246, 0.1);
+            color: white;
+        }
+
+        /* Stripe Elements Dark Theme */
+        .StripeElement {
+            background: #12121a !important;
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        .StripeElement--focus {
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.5);
+        }
+        .StripeElement--invalid {
+            border-color: #ef4444;
+        }
+        #card-element {
+            background: #12121a;
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        #card-element.StripeElement--focus {
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.5);
+        }
+        .stripe-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255,255,255,0.05);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="mesh-bg"></div>
+    <div class="noise"></div>
+    <canvas id="particles"></canvas>
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full z-50 glass border-b border-white/5 transition-all duration-300" id="navbar">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-20">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-500 to-neon-cyan flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                    </div>
+                    <span class="font-display font-bold text-2xl tracking-tight text-white">PraxoAI</span>
+                </div>
+
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#tools" class="text-gray-400 hover:text-white transition-colors text-sm font-medium">Tools</a>
+                    <a href="#how-it-works" class="text-gray-400 hover:text-white transition-colors text-sm font-medium">How it Works</a>
+                    <button onclick="scrollToPayment()" class="bg-accent-600 hover:bg-accent-500 text-white px-6 py-2.5 rounded-full font-medium text-sm transition-all hover:shadow-lg hover:shadow-accent-500/25 btn-shine">
+                        Get Access
+                    </button>
+                </div>
+
+                <button class="md:hidden text-white" onclick="toggleMobileMenu()">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div id="mobileMenu" class="hidden md:hidden glass border-t border-white/5">
+            <div class="px-4 py-4 space-y-3">
+                <a href="#tools" class="block text-gray-400 hover:text-white py-2">Tools</a>
+                <a href="#how-it-works" class="block text-gray-400 hover:text-white py-2">How it Works</a>
+                <button onclick="scrollToPayment()" class="w-full bg-accent-600 text-white py-3 rounded-xl font-medium">Get Access Now</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div class="text-center max-w-4xl mx-auto">
+                <div class="inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-accent-500/10 border border-accent-500/20 mb-8 animate-pulse-slow">
+                    <span class="w-2 h-2 rounded-full bg-accent-400 animate-pulse"></span>
+                    <span class="text-accent-300 text-sm font-medium">Trusted by 10,000+ productivity enthusiasts</span>
+                </div>
+
+                <h1 class="font-display font-bold text-5xl md:text-7xl lg:text-8xl leading-tight mb-6">
+                    <span class="text-white">Unlock Your</span><br>
+                    <span class="gradient-text">Ultimate Focus</span>
+                </h1>
+
+                <p class="text-xl md:text-2xl text-gray-400 mb-12 max-w-2xl mx-auto leading-relaxed">
+                    Choose from our curated collection of premium productivity tools. 
+                    One purchase, instant delivery, lifetime access.
+                </p>
+
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+                    <button onclick="scrollToPayment()" class="group relative bg-gradient-to-r from-accent-600 to-accent-500 hover:from-accent-500 hover:to-accent-400 text-white px-8 py-4 rounded-2xl font-semibold text-lg transition-all hover:shadow-2xl hover:shadow-accent-500/30 glow-purple btn-shine">
+                        <span class="flex items-center space-x-2">
+                            <span>Get Instant Access</span>
+                            <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                            </svg>
+                        </span>
+                    </button>
+                    <button onclick="document.getElementById('tools').scrollIntoView({behavior: 'smooth'})" class="px-8 py-4 rounded-2xl font-semibold text-lg text-gray-300 hover:text-white border border-white/10 hover:border-white/30 transition-all hover:bg-white/5">
+                        Explore Tools
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-3 gap-8 max-w-2xl mx-auto pt-8 border-t border-white/10">
+                    <div>
+                        <div class="font-display font-bold text-3xl text-white">50+</div>
+                        <div class="text-sm text-gray-500 mt-1">Unique Tools</div>
+                    </div>
+                    <div>
+                        <div class="font-display font-bold text-3xl text-white">190</div>
+                        <div class="text-sm text-gray-500 mt-1">Countries Served</div>
+                    </div>
+                    <div>
+                        <div class="font-display font-bold text-3xl text-white">4.9</div>
+                        <div class="text-sm text-gray-500 mt-1">User Rating</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="absolute top-1/4 left-10 w-20 h-20 bg-accent-500/20 rounded-full blur-3xl animate-float"></div>
+        <div class="absolute bottom-1/4 right-10 w-32 h-32 bg-neon-cyan/20 rounded-full blur-3xl animate-float" style="animation-delay: 2s;"></div>
+    </section>
+
+    <!-- Tools Grid -->
+    <section id="tools" class="py-20 relative">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="font-display font-bold text-4xl md:text-5xl text-white mb-4">Choose Your Weapon</h2>
+                <p class="text-gray-400 text-lg max-w-2xl mx-auto">Each tool is crafted for maximum impact. Select one that matches your workflow.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Tool Card 1 -->
+                <div class="tool-card glass rounded-2xl p-6 cursor-pointer group" onclick="selectTool('deepwork')" data-tool="deepwork">
+                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-neon-cyan/20 to-neon-cyan/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <svg class="w-7 h-7 text-neon-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <h3 class="font-display font-bold text-xl text-white mb-2">DeepWork Timer</h3>
+                    <p class="text-gray-400 text-sm mb-4 leading-relaxed">Advanced Pomodoro with analytics, ambient sounds, and focus scoring.</p>
+                    <div class="flex items-center justify-between">
+                        <span class="text-neon-cyan font-bold text-lg">$29</span>
+                        <span class="text-xs text-gray-500 bg-white/5 px-3 py-1 rounded-full">Popular</span>
+                    </div>
+                </div>
+
+                <!-- Tool Card 2 -->
+                <div class="tool-card glass rounded-2xl p-6 cursor-pointer group" onclick="selectTool('mindmap')" data-tool="mindmap">
+                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-accent-500/20 to-accent-500/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <svg class="w-7 h-7 text-accent-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0121 18.382V7.618a1 1 0 01-.553-.894L15 7m0 13V7"/>
+                        </svg>
+                    </div>
+                    <h3 class="font-display font-bold text-xl text-white mb-2">MindMap Pro</h3>
+                    <p class="text-gray-400 text-sm mb-4 leading-relaxed">Infinite canvas brainstorming with AI-assisted node generation.</p>
+                    <div class="flex items-center justify-between">
+                        <span class="text-accent-400 font-bold text-lg">$39</span>
+                        <span class="text-xs text-gray-500 bg-white/5 px-3 py-1 rounded-full">New</span>
+                    </div>
+                </div>
+
+                <!-- Tool Card 3 -->
+                <div class="tool-card glass rounded-2xl p-6 cursor-pointer group" onclick="selectTool('habit')" data-tool="habit">
+                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-neon-pink/20 to-neon-pink/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <svg class="w-7 h-7 text-neon-pink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <h3 class="font-display font-bold text-xl text-white mb-2">Habit Architect</h3>
+                    <p class="text-gray-400 text-sm mb-4 leading-relaxed">Behavior design system with streaks, accountability, and rewards.</p>
+                    <div class="flex items-center justify-between">
+                        <span class="text-neon-pink font-bold text-lg">$24</span>
+                        <span class="text-xs text-gray-500 bg-white/5 px-3 py-1 rounded-full">Bestseller</span>
+                    </div>
+                </div>
+
+                <!-- Tool Card 4 -->
+                <div class="tool-card glass rounded-2xl p-6 cursor-pointer group" onclick="selectTool('focus')" data-tool="focus">
+                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-neon-lime/20 to-neon-lime/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <svg class="w-7 h-7 text-neon-lime" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                    </div>
+                    <h3 class="font-display font-bold text-xl text-white mb-2">Focus Lens</h3>
+                    <p class="text-gray-400 text-sm mb-4 leading-relaxed">Website blocker with smart allowances and usage analytics.</p>
+                    <div class="flex items-center justify-between">
+                        <span class="text-neon-lime font-bold text-lg">$19</span>
+                        <span class="text-xs text-gray-500 bg-white/5 px-3 py-1 rounded-full">Essential</span>
+                    </div>
+                </div>
+
+                <!-- Tool Card 5 -->
+                <div class="tool-card glass rounded-2xl p-6 cursor-pointer group" onclick="selectTool('journal')" data-tool="journal">
+                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-500/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <svg class="w-7 h-7 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                    </div>
+                    <h3 class="font-display font-bold text-xl text-white mb-2">Daily Journal</h3>
+                    <p class="text-gray-400 text-sm mb-4 leading-relaxed">Structured reflection with prompts, mood tracking, and insights.</p>
+                    <div class="flex items-center justify-between">
+                        <span class="text-orange-400 font-bold text-lg">$22</span>
+                        <span class="text-xs text-gray-500 bg-white/5 px-3 py-1 rounded-full">Wellness</span>
+                    </div>
+                </div>
+
+                <!-- Tool Card 6 -->
+                <div class="tool-card glass rounded-2xl p-6 cursor-pointer group" onclick="selectTool('planner')" data-tool="planner">
+                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <svg class="w-7 h-7 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    <h3 class="font-display font-bold text-xl text-white mb-2">Task Architect</h3>
+                    <p class="text-gray-400 text-sm mb-4 leading-relaxed">Project planner with Eisenhower matrix and time-blocking.</p>
+                    <div class="flex items-center justify-between">
+                        <span class="text-blue-400 font-bold text-lg">$34</span>
+                        <span class="text-xs text-gray-500 bg-white/5 px-3 py-1 rounded-full">Pro</span>
+                    </div>
+                </div>
+
+                <!-- Tool Card 7 - $5 Quick Start -->
+                <div class="tool-card glass rounded-2xl p-6 cursor-pointer group relative" onclick="selectTool('quickstart')" data-tool="quickstart">
+                    <div class="absolute -top-3 left-1/2 -translate-x-1/2">
+                        <span class="bg-gradient-to-r from-neon-amber to-orange-500 text-black text-xs font-bold px-4 py-1 rounded-full shadow-lg shadow-neon-amber/20">STARTER DEAL</span>
+                    </div>
+                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-neon-amber/20 to-orange-500/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform mt-2">
+                        <svg class="w-7 h-7 text-neon-amber" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                    </div>
+                    <h3 class="font-display font-bold text-xl text-white mb-2">QuickStart Kit</h3>
+                    <p class="text-gray-400 text-sm mb-4 leading-relaxed">Minimalist daily checklist, 5-min morning routine template, and focus playlist.</p>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-neon-amber font-bold text-2xl">$5</span>
+                            <span class="text-gray-600 text-sm line-through">$12</span>
+                        </div>
+                        <span class="text-xs text-neon-amber bg-neon-amber/10 px-3 py-1 rounded-full font-medium">58% OFF</span>
+                    </div>
+                </div>
+
+                <!-- Bundle Card -->
+                <div class="tool-card glass rounded-2xl p-6 cursor-pointer group" onclick="selectTool('bundle')" data-tool="bundle">
+                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-accent-500/20 to-neon-pink/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <svg class="w-7 h-7 text-accent-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                        </svg>
+                    </div>
+                    <h3 class="font-display font-bold text-xl text-white mb-2">Complete Bundle</h3>
+                    <p class="text-gray-400 text-sm mb-4 leading-relaxed">All tools in one package. Best value for serious productivity hackers.</p>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-accent-400 font-bold text-lg">$99</span>
+                            <span class="text-gray-600 text-sm line-through">$167</span>
+                        </div>
+                        <span class="text-xs text-accent-400 bg-accent-500/10 px-3 py-1 rounded-full">Save $68</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How it Works -->
+    <section id="how-it-works" class="py-20 relative">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="font-display font-bold text-4xl md:text-5xl text-white mb-4">Simple as 1-2-3</h2>
+                <p class="text-gray-400 text-lg">No accounts. No subscriptions. Just instant productivity.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="relative">
+                    <div class="glass rounded-2xl p-8 text-center h-full">
+                        <div class="w-16 h-16 rounded-full bg-accent-500/20 flex items-center justify-center mx-auto mb-6">
+                            <span class="font-display font-bold text-2xl text-accent-400">1</span>
+                        </div>
+                        <h3 class="font-display font-bold text-xl text-white mb-3">Pick Your Tool</h3>
+                        <p class="text-gray-400 text-sm leading-relaxed">Browse our curated collection and select the productivity tool that fits your workflow.</p>
+                    </div>
+                    <div class="hidden md:block absolute top-1/2 -right-4 w-8 h-0.5 bg-gradient-to-r from-accent-500 to-transparent"></div>
+                </div>
+
+                <div class="relative">
+                    <div class="glass rounded-2xl p-8 text-center h-full">
+                        <div class="w-16 h-16 rounded-full bg-neon-cyan/20 flex items-center justify-center mx-auto mb-6">
+                            <span class="font-display font-bold text-2xl text-neon-cyan">2</span>
+                        </div>
+                        <h3 class="font-display font-bold text-xl text-white mb-3">Pay Securely</h3>
+                        <p class="text-gray-400 text-sm leading-relaxed">One-time payment with Apple Pay, Google Pay, or card. Takes 10 seconds.</p>
+                    </div>
+                    <div class="hidden md:block absolute top-1/2 -right-4 w-8 h-0.5 bg-gradient-to-r from-neon-cyan to-transparent"></div>
+                </div>
+
+                <div class="glass rounded-2xl p-8 text-center h-full">
+                    <div class="w-16 h-16 rounded-full bg-neon-pink/20 flex items-center justify-center mx-auto mb-6">
+                        <span class="font-display font-bold text-2xl text-neon-pink">3</span>
+                    </div>
+                    <h3 class="font-display font-bold text-xl text-white mb-3">Instant Delivery</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed">Check your inbox. Download link, license key, and setup guide arrive immediately.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Payment Section -->
+    <section id="payment" class="py-20 relative">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="glass-strong rounded-3xl p-8 md:p-12 glow-purple relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-96 h-96 bg-accent-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+
+                <div class="relative z-10">
+                    <div class="text-center mb-10">
+                        <h2 class="font-display font-bold text-3xl md:text-4xl text-white mb-3">Get Your Tool Now</h2>
+                        <p class="text-gray-400">Complete your purchase in seconds. Delivered instantly to your email.</p>
+                    </div>
+
+                    <!-- Selected Tool Display -->
+                    <div id="selectedToolDisplay" class="mb-8 p-4 rounded-xl bg-white/5 border border-white/10 hidden">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-4">
+                                <div id="toolIcon" class="w-12 h-12 rounded-lg bg-accent-500/20 flex items-center justify-center">
+                                </div>
+                                <div>
+                                    <div id="toolName" class="font-display font-bold text-white text-lg">Select a Tool</div>
+                                    <div id="toolDesc" class="text-gray-400 text-sm">Choose from the tools above</div>
+                                </div>
+                            </div>
+                            <div id="toolPrice" class="font-display font-bold text-2xl text-accent-400">$0</div>
+                        </div>
+                    </div>
+
+                    <!-- Stripe Payment Form -->
+                    <form id="payment-form" class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">First Name</label>
+                                <input type="text" id="firstName" required class="w-full px-4 py-3 rounded-xl bg-dark-800 border border-white/10 text-white placeholder-gray-500 focus:border-accent-500 transition-colors" placeholder="John">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Last Name</label>
+                                <input type="text" id="lastName" required class="w-full px-4 py-3 rounded-xl bg-dark-800 border border-white/10 text-white placeholder-gray-500 focus:border-accent-500 transition-colors" placeholder="Doe">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
+                            <input type="email" id="email" required class="w-full px-4 py-3 rounded-xl bg-dark-800 border border-white/10 text-white placeholder-gray-500 focus:border-accent-500 transition-colors" placeholder="john@example.com">
+                            <p class="text-xs text-gray-500 mt-1">Your tool will be delivered to this address</p>
+                        </div>
+
+                        <!-- Stripe Payment Element Container -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-3">Payment Details</label>
+                            <div id="payment-element" class="rounded-xl overflow-hidden">
+                                <!-- Stripe.js injects the Payment Element here -->
+                            </div>
+                            <div id="payment-message" class="hidden text-red-400 text-sm mt-2"></div>
+                        </div>
+
+                        <!-- Security Badges -->
+                        <div class="flex items-center justify-center space-x-4 py-2">
+                            <div class="stripe-badge">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.594-7.305h.003z"/></svg>
+                                <span>Powered by Stripe</span>
+                            </div>
+                            <div class="flex items-center space-x-2 text-gray-500 text-xs">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                <span>SSL Encrypted</span>
+                            </div>
+                            <div class="flex items-center space-x-2 text-gray-500 text-xs">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                                <span>PCI Compliant</span>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <button type="submit" id="submit" class="w-full bg-gradient-to-r from-accent-600 to-accent-500 hover:from-accent-500 hover:to-accent-400 text-white py-4 rounded-xl font-bold text-lg transition-all hover:shadow-2xl hover:shadow-accent-500/30 btn-shine flex items-center justify-center space-x-2">
+                            <span id="button-text">Complete Purchase</span>
+                            <div id="spinner" class="loading hidden"></div>
+                        </button>
+
+                        <p class="text-center text-xs text-gray-500">
+                            By purchasing, you agree to our Terms of Service and Privacy Policy.
+                            One-time charge. No recurring fees.
+                        </p>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Trust Section -->
+    <section class="py-20 border-t border-white/5">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <p class="text-gray-500 text-sm uppercase tracking-widest font-medium">Trusted by teams at</p>
+            </div>
+            <div class="flex flex-wrap justify-center items-center gap-12 opacity-50">
+                <div class="flex items-center space-x-2 text-gray-400 font-display font-bold text-xl">
+                    <span>Notion</span>
+                </div>
+                <div class="flex items-center space-x-2 text-gray-400 font-display font-bold text-xl">
+                    <span>Linear</span>
+                </div>
+                <div class="flex items-center space-x-2 text-gray-400 font-display font-bold text-xl">
+                    <span>Figma</span>
+                </div>
+                <div class="flex items-center space-x-2 text-gray-400 font-display font-bold text-xl">
+                    <span>Vercel</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 border-t border-white/5">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="flex items-center space-x-3 mb-4 md:mb-0">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-500 to-neon-cyan flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                    </div>
+                    <span class="font-display font-bold text-lg text-white">PraxoAI</span>
+                </div>
+                <div class="flex space-x-6 text-sm text-gray-500">
+                    <a href="#" class="hover:text-white transition-colors">Privacy</a>
+                    <a href="#" class="hover:text-white transition-colors">Terms</a>
+                    <a href="#" class="hover:text-white transition-colors">Support</a>
+                </div>
+                <p class="text-gray-600 text-sm mt-4 md:mt-0"> 2026 PraxoAI. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closeModal()"></div>
+        <div class="relative glass-strong rounded-3xl p-8 md:p-12 max-w-md w-full modal-enter text-center">
+            <div class="w-20 h-20 rounded-full bg-neon-lime/20 flex items-center justify-center mx-auto mb-6">
+                <svg class="w-10 h-10 text-neon-lime" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+            </div>
+            <h3 class="font-display font-bold text-2xl text-white mb-3">Payment Successful!</h3>
+            <p class="text-gray-400 mb-6">Your <span id="modalToolName" class="text-accent-400 font-semibold"></span> has been sent to <span id="modalEmail" class="text-white"></span>. Check your inbox for the download link.</p>
+            <button onclick="closeModal()" class="bg-accent-600 hover:bg-accent-500 text-white px-8 py-3 rounded-xl font-semibold transition-all w-full">
+                Got it!
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Tool data
+        const tools = {
+            deepwork: { name: 'DeepWork Timer', price: 2900, displayPrice: '$29', color: 'text-neon-cyan', icon: '<svg class="w-7 h-7 text-neon-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' },
+            mindmap: { name: 'MindMap Pro', price: 3900, displayPrice: '$39', color: 'text-accent-400', icon: '<svg class="w-7 h-7 text-accent-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0121 18.382V7.618a1 1 0 01-.553-.894L15 7m0 13V7"/></svg>' },
+            habit: { name: 'Habit Architect', price: 2400, displayPrice: '$24', color: 'text-neon-pink', icon: '<svg class="w-7 h-7 text-neon-pink" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' },
+            focus: { name: 'Focus Lens', price: 1900, displayPrice: '$19', color: 'text-neon-lime', icon: '<svg class="w-7 h-7 text-neon-lime" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>' },
+            journal: { name: 'Daily Journal', price: 2200, displayPrice: '$22', color: 'text-orange-400', icon: '<svg class="w-7 h-7 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>' },
+            planner: { name: 'Task Architect', price: 3400, displayPrice: '$34', color: 'text-blue-400', icon: '<svg class="w-7 h-7 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>' },
+            quickstart: { name: 'QuickStart Kit', price: 500, displayPrice: '$5', color: 'text-neon-amber', icon: '<svg class="w-7 h-7 text-neon-amber" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>' },
+            bundle: { name: 'Complete Bundle', price: 9900, displayPrice: '$99', color: 'text-accent-400', icon: '<svg class="w-7 h-7 text-accent-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>' }
+        };
+
+        let selectedTool = null;
+        let stripe = null;
+        let elements = null;
+        let paymentElement = null;
+
+        // Initialize Stripe with your publishable key
+        // Replace with your actual Stripe publishable key
+        const STRIPE_PUBLISHABLE_KEY = 'REPLACE_WITH_PK_LIVE';
+
+        function initStripe() {
+            if (STRIPE_PUBLISHABLE_KEY.includes('REPLACE_WITH_PK_LIVE')) {
+                console.log('Stripe not configured - running in demo mode');
+                return false;
+            }
+            stripe = Stripe(STRIPE_PUBLISHABLE_KEY);
+            return true;
+        }
+
+        function selectTool(toolId) {
+            selectedTool = toolId;
+            const tool = tools[toolId];
+
+            // Update visual selection
+            document.querySelectorAll('.tool-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            document.querySelector(`[data-tool="${toolId}"]`).classList.add('selected');
+
+            // Update payment display
+            document.getElementById('selectedToolDisplay').classList.remove('hidden');
+            document.getElementById('toolName').textContent = tool.name;
+            document.getElementById('toolPrice').textContent = tool.displayPrice;
+            document.getElementById('toolPrice').className = 'font-display font-bold text-2xl ' + tool.color;
+            document.getElementById('toolIcon').innerHTML = tool.icon;
+
+            // Initialize or update Stripe Payment Element
+            if (initStripe()) {
+                initializePaymentElement(tool.price);
+            }
+
+            // Scroll to payment
+            document.getElementById('payment').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        async function initializePaymentElement(amount) {
+            try {
+                // Fetch client secret from your backend
+                const response = await fetch('/create-payment-intent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        items: [{ id: selectedTool, amount: amount }],
+                        email: document.getElementById('email').value
+                    })
+                });
+
+                if (!response.ok) throw new Error('Failed to create payment intent');
+
+                const { clientSecret } = await response.json();
+
+                // Dark theme appearance for Stripe Elements
+                const appearance = {
+                    theme: 'night',
+                    variables: {
+                        colorPrimary: '#8b5cf6',
+                        colorBackground: '#12121a',
+                        colorText: '#e2e8f0',
+                        colorDanger: '#ef4444',
+                        borderRadius: '12px',
+                        spacingUnit: '4px',
+                        fontFamily: 'Inter, sans-serif'
+                    }
+                };
+
+                elements = stripe.elements({ appearance, clientSecret });
+
+                if (paymentElement) {
+                    paymentElement.destroy();
+                }
+
+                paymentElement = elements.create('payment', {
+                    layout: 'tabs',
+                    defaultValues: {
+                        billingDetails: {
+                            email: document.getElementById('email').value
+                        }
+                    }
+                });
+
+                paymentElement.mount('#payment-element');
+            } catch (error) {
+                console.error('Stripe initialization error:', error);
+                showMessage('Payment system temporarily unavailable. Please try again.');
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('payment-form').addEventListener('submit', handleSubmit);
+
+        async function handleSubmit(e) {
+            e.preventDefault();
+
+            if (!selectedTool) {
+                showMessage('Please select a tool first!');
+                document.getElementById('tools').scrollIntoView({ behavior: 'smooth' });
+                return;
+            }
+
+            setLoading(true);
+
+            // Demo mode fallback if Stripe not configured
+            if (!stripe) {
+                setTimeout(() => {
+                    setLoading(false);
+                    const email = document.getElementById('email').value;
+                    document.getElementById('modalToolName').textContent = tools[selectedTool].name;
+                    document.getElementById('modalEmail').textContent = email;
+                    document.getElementById('successModal').classList.remove('hidden');
+                    document.getElementById('successModal').classList.add('flex');
+                }, 2000);
+                return;
+            }
+
+            try {
+                const { error } = await stripe.confirmPayment({
+                    elements,
+                    confirmParams: {
+                        return_url: window.location.origin + '/success.html',
+                        receipt_email: document.getElementById('email').value
+                    }
+                });
+
+                if (error) {
+                    if (error.type === 'card_error' || error.type === 'validation_error') {
+                        showMessage(error.message);
+                    } else {
+                        showMessage('An unexpected error occurred. Please try again.');
+                    }
+                    setLoading(false);
+                } else {
+                    // Payment succeeded - show success modal
+                    const email = document.getElementById('email').value;
+                    document.getElementById('modalToolName').textContent = tools[selectedTool].name;
+                    document.getElementById('modalEmail').textContent = email;
+                    document.getElementById('successModal').classList.remove('hidden');
+                    document.getElementById('successModal').classList.add('flex');
+                    setLoading(false);
+                }
+            } catch (err) {
+                showMessage('Payment processing failed. Please try again.');
+                setLoading(false);
+            }
+        }
+
+        function scrollToPayment() {
+            document.getElementById('payment').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function toggleMobileMenu() {
+            document.getElementById('mobileMenu').classList.toggle('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('successModal').classList.add('hidden');
+            document.getElementById('successModal').classList.remove('flex');
+        }
+
+        function showMessage(messageText) {
+            const messageContainer = document.getElementById('payment-message');
+            messageContainer.classList.remove('hidden');
+            messageContainer.textContent = messageText;
+            setTimeout(() => {
+                messageContainer.classList.add('hidden');
+                messageContainer.textContent = '';
+            }, 4000);
+        }
+
+        function setLoading(isLoading) {
+            const submitBtn = document.getElementById('submit');
+            const buttonText = document.getElementById('button-text');
+            const spinner = document.getElementById('spinner');
+
+            if (isLoading) {
+                submitBtn.disabled = true;
+                buttonText.classList.add('hidden');
+                spinner.classList.remove('hidden');
+            } else {
+                submitBtn.disabled = false;
+                buttonText.classList.remove('hidden');
+                spinner.classList.add('hidden');
+            }
+        }
+
+        // Particle system
+        const canvas = document.getElementById('particles');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2 + 0.5;
+                this.speedX = Math.random() * 0.5 - 0.25;
+                this.speedY = Math.random() * 0.5 - 0.25;
+                this.opacity = Math.random() * 0.5 + 0.1;
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if (this.x > canvas.width) this.x = 0;
+                if (this.x < 0) this.x = canvas.width;
+                if (this.y > canvas.height) this.y = 0;
+                if (this.y < 0) this.y = canvas.height;
+            }
+            draw() {
+                ctx.fillStyle = `rgba(139, 92, 246, ${this.opacity})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < 50; i++) {
+            particles.push(new Particle());
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        // Navbar scroll effect
+        window.addEventListener('scroll', () => {
+            const navbar = document.getElementById('navbar');
+            if (window.scrollY > 50) {
+                navbar.classList.add('shadow-lg');
+            } else {
+                navbar.classList.remove('shadow-lg');
+            }
+        });
+
+        // Initialize Stripe on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initStripe();
+        });
+    </script>
+</body>
+</html>
