@@ -731,9 +731,20 @@
             document.getElementById('toolPrice').className = 'font-display font-bold text-2xl ' + tool.color;
             document.getElementById('toolIcon').innerHTML = tool.icon;
 
-            // Initialize or update Stripe Payment Element
+           // Initialize or update Stripe Payment Element
             if (initStripe()) {
-                initializePaymentElement(tool.price);
+                const emailField = document.getElementById('email');
+                if (emailField.value && emailField.value.includes('@')) {
+                    initializePaymentElement(tool.price);
+                } else {
+                    emailField.focus();
+                    emailField.addEventListener('blur', function onBlur() {
+                        if (emailField.value && emailField.value.includes('@')) {
+                            initializePaymentElement(tool.price);
+                            emailField.removeEventListener('blur', onBlur);
+                        }
+                    });
+                }
             }
 
             // Scroll to payment
